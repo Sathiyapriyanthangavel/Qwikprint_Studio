@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QwikPrint Photo Studio</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#17243a;font-family:Arial,Helvetica,sans-serif}
+.wrap{max-width:1050px;margin:auto;padding:28px 18px 50px}
+header{background:linear-gradient(120deg,#102a4d,#176cc2);color:#fff;padding:30px;border-radius:18px;margin-bottom:26px}
+.brand{font-size:12px;font-weight:bold;letter-spacing:3px;opacity:.8}.title{font-size:34px;font-weight:750;margin:12px 0 8px}.subtitle{opacity:.85;font-size:15px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin:24px 0 14px;gap:12px}
+h2{font-size:20px;margin:0}.count{background:#e5efff;color:#1769d2;border-radius:30px;padding:8px 13px;font-weight:bold;font-size:13px}
+.upload{display:block;border:2px dashed #3986e9;border-radius:16px;background:#fff;padding:42px 16px;text-align:center;cursor:pointer;transition:.2s}
+.upload:hover,.upload.drag{background:#edf5ff;border-color:#1769d2}
+.cloud{font-size:48px}.upload strong{display:block;font-size:20px;margin:12px 0 8px}.muted{color:#718096;font-size:14px}
+.browse{display:inline-block;background:#1769d2;color:white;padding:12px 22px;border-radius:10px;font-weight:bold;margin-top:18px}
+#fileInput{display:none}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin:26px 0 14px}
+.clear{border:0;background:transparent;color:#d33b46;font-weight:bold;cursor:pointer;font-size:14px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.photo{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#e8edf4;border:1px solid #dce3ed}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.remove{position:absolute;right:8px;top:8px;width:30px;height:30px;border:0;border-radius:50%;background:#17243add;color:white;font-size:20px;line-height:1;cursor:pointer}
+.filename{position:absolute;bottom:0;left:0;right:0;padding:22px 9px 9px;color:white;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(transparent,#000b)}
+.empty{background:#fff;border:1px solid #e1e7ef;border-radius:14px;padding:42px 16px;text-align:center;color:#718096}
+.empty .icon{font-size:42px;margin-bottom:10px}
+#status{text-align:center;color:#718096;font-size:13px;min-height:20px;margin-top:16px}
+footer{text-align:center;color:#8a96a8;font-size:12px;margin-top:36px}
+@media(max-width:520px){.wrap{padding:16px 12px 35px}header{padding:24px}.title{font-size:29px}.gallery{grid-template-columns:repeat(2,minmax(0,1fr))}.upload{padding:32px 12px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<header>
+  <div class="brand">QWIKPRINT</div>
+  <div class="title">Photo Studio</div>
+  <div class="subtitle">Upload your memories.</div>
+</header>
+<div class="section-head">
+  <h2>Upload Photos</h2>
+  <span class="count" id="count">0 photos</span>
+</div>
+<label class="upload" id="dropArea" for="fileInput">
+  <div class="cloud">☁️</div>
+  <strong>Choose photos to upload</strong>
+  <div class="muted">Select one or multiple photos from your device</div>
+  <span class="browse">Browse Photos</span>
+  <div class="muted" style="font-size:12px;margin-top:15px">JPG · JPEG · PNG · WEBP · Maximum 20 MB per photo</div>
+</label>
+<input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+<div class="toolbar">
+  <h2>Uploaded Photos</h2>
+  <button class="clear" id="clearAll" type="button">Clear all</button>
+</div>
+<div id="gallery" class="gallery"></div>
+<div id="empty" class="empty">
+  <div class="icon">🖼️</div>
+  <strong>No photos uploaded yet</strong>
+  <div class="muted" style="margin-top:7px">Your uploaded photos will appear here.</div>
+</div>
+<div id="status" role="status" aria-live="polite"></div>
+<footer>QwikPrint · The Future of Printing</footer>
+</main>
+<script>
+(() => {
+ const input=document.getElementById('fileInput');
+ const gallery=document.getElementById('gallery');
+ const count=document.getElementById('count');
+ const empty=document.getElementById('empty');
+ const status=document.getElementById('status');
+ const drop=document.getElementById('dropArea');
+ let photos=[],nextId=0;
+ const allowed=['image/jpeg','image/png','image/webp'];
+ function render(){
+   count.textContent=photos.length+' photo'+(photos.length===1?'':'s');
+   empty.style.display=photos.length?'none':'block';
+   gallery.innerHTML='';
+   photos.forEach(photo=>{
+     const card=document.createElement('div');card.className='photo';
+     const img=document.createElement('img');img.src=photo.url;img.alt=photo.name;
+     const remove=document.createElement('button');remove.className='remove';remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove '+photo.name);
+     remove.addEventListener('click',()=>removePhoto(photo.id));
+     const name=document.createElement('div');name.className='filename';name.textContent=photo.name;
+     card.append(img,remove,name);gallery.appendChild(card);
+   });
+ }
+ function addFiles(files){
+   let added=0,skipped=0;
+   [...files].forEach(file=>{
+     if(!allowed.includes(file.type)||file.size>20*1024*1024){skipped++;return;}
+     photos.push({id:++nextId,name:file.name,url:URL.createObjectURL(file)});added++;
+   });
+   status.textContent=added+' photo(s) added.'+(skipped?' '+skipped+' file(s) skipped: unsupported format or over 20 MB.':'');
+   render();
+ }
+ function removePhoto(id){
+   const index=photos.findIndex(p=>p.id===id);
+   if(index<0)return;
+   URL.revokeObjectURL(photos[index].url);photos.splice(index,1);
+   status.textContent='Photo removed.';render();
+ }
+ input.addEventListener('change',e=>{addFiles(e.target.files);input.value='';});
+ document.getElementById('clearAll').addEventListener('click',()=>{
+   photos.forEach(p=>URL.revokeObjectURL(p.url));photos=[];
+   status.textContent='All photos cleared.';render();
+ });
+ ['dragenter','dragover'].forEach(evt=>drop.addEventListener(evt,e=>{e.preventDefault();drop.classList.add('drag');}));
+ ['dragleave','drop'].forEach(evt=>drop.addEventListener(evt,e=>{e.preventDefault();drop.classList.remove('drag');}));
+ drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
+ window.addEventListener('beforeunload',()=>photos.forEach(p=>URL.revokeObjectURL(p.url)));
+ render();
+})();
+</script>
+</body>
+</html>
